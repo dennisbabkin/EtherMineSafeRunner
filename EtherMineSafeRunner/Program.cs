@@ -68,13 +68,14 @@ namespace EtherMineSafeRunner
 					{
 						if (uint.TryParse(args[p++], out clp.nHashRangeMax))
 						{
-							if (clp.nHashRangeMax < clp.nHashRangeMin)
-							{
-								//Swap them
-								uint v = clp.nHashRangeMin;
-								clp.nHashRangeMin = clp.nHashRangeMax;
-								clp.nHashRangeMax = v;
-							}
+                            //          WHY?
+							//if (clp.nHashRangeMax < clp.nHashRangeMin)
+							//{
+							//	//Swap them
+							//	uint v = clp.nHashRangeMin;
+							//	clp.nHashRangeMin = clp.nHashRangeMax;
+							//	clp.nHashRangeMax = v;
+							//}
 
 							if (uint.TryParse(args[p++], out clp.nMaxAllowedMinerRestartsBeforeReboot))
 							{
@@ -577,58 +578,27 @@ namespace EtherMineSafeRunner
 			if (nCnt > 0 &&
 				(arrPs[0].CompareTo("m") == 0 || arrPs[0].CompareTo("i") == 0))
 			{
-				for (int i = 1; i < nCnt; i++)
-				{
-					//Look for Mh
-					if (arrPs[i].CompareTo("Mh") == 0)
-					{
-						//Look for:      A53 89.96 Mh
-						if (i - 2 > 0)
-						{
-							//Value before must be a float
-							double fHashRate;
-							if (double.TryParse(arrPs[i - 1], out fHashRate))
-							{
-								if (arrPs[i - 2].IndexOf('A') == 0)
-								{
-									//This is a match
-									bool bHashGood = false;
+				for (int i = 1; i < nCnt; i++) {
+                    double fHashRate;
+                    if (arrPs[i].Contains("Mh") &&  //Fall through instead of nested IFs
+                        i - 2 > 0 &&
+                        double.TryParse(arrPs[i - 1], out fHashRate) &&
+                        arrPs[i - 2].IndexOf('A') == 0) {
+                        if (fHashRate >= info.nHashRangeMin && fHashRate <= info.nHashRangeMax) {
+                            gWS.setLastGoodHashRateTimeUTC();
+                        }
+                        else if (fHashRate >= info.nHashRangeMin && info.nHashRangeMax == 0) {  //max was set to 0 only check min
+                            gWS.setLastGoodHashRateTimeUTC();
+                        }
+                        break;
+                    }
+                    else if (arrPs[i].CompareTo("**Accepted") == 0) {
+                        //Hash was accepted
+                        gWS.setLastAcceptedTimeUTC();
 
-									//See if hashrate within range
-									if (fHashRate >= info.nHashRangeMin)
-									{
-										//Good so far
-										if (info.nHashRangeMax != 0)
-										{
-											//Need max range too
-											if (fHashRate <= info.nHashRangeMax)
-											{
-												bHashGood = true;
-											}
-										}
-										else
-											bHashGood = true;
-									}
-
-									if(bHashGood)
-									{
-										//Register when we got a good hash rate
-										gWS.setLastGoodHashRateTimeUTC();
-									}
-
-									break;
-								}
-							}
-						}
-					}
-					else if(arrPs[i].CompareTo("**Accepted") == 0)
-					{
-						//Hash was accepted
-						gWS.setLastAcceptedTimeUTC();
-
-						break;
-					}
-				}
+                        break;
+                    }
+                }
 			}
 
 		}
